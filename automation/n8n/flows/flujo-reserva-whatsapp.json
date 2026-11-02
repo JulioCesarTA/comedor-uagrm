@@ -1,0 +1,76 @@
+{
+  "name": "Flujo 1 - Reserva por WhatsApp (Kapso)",
+  "nodes": [
+    {
+      "id": "webhook-kapso",
+      "name": "WhatsApp Webhook (Kapso)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp/kapso",
+        "responseMode": "lastNode"
+      }
+    },
+    {
+      "id": "clasificar",
+      "name": "Clasificar intención",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300],
+      "parameters": {
+        "jsCode": "const texto = ($json.body?.message?.text || '').toLowerCase();\nlet intent = 'consulta_menu';\nif (texto.includes('reservar') || texto.includes('reserva')) intent = 'reservar';\nelse if (texto.includes('beca')) intent = 'consultar_beca';\nreturn [{ json: { ...$json, intent, texto, telefono: $json.body?.from } }];"
+      }
+    },
+    {
+      "id": "menu-get",
+      "name": "GET /menus/semana/ALMUERZO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 220],
+      "parameters": {
+        "url": "http://menu-inventario-service:8080/menus/semana/ALMUERZO",
+        "options": {}
+      }
+    },
+    {
+      "id": "crear-saga",
+      "name": "POST /sagas/reservar-y-pagar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 380],
+      "parameters": {
+        "method": "POST",
+        "url": "http://ia-ml-service:8080/sagas/reservar-y-pagar",
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\"estudiante_id\":\"{{$json.telefono}}\",\"menu_id\":\"demo\",\"plato_id\":\"demo\",\"fecha\":\"2026-11-05\",\"turno\":\"ALMUERZO\",\"metodo_pago\":\"qr_bancario\",\"monto\":8,\"idempotency_key\":\"wa-{{$now.toMillis()}}\"}"
+      }
+    },
+    {
+      "id": "responder-wa",
+      "name": "Responder por WhatsApp (Kapso)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [900, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.kapso.ai/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [{ "name": "Authorization", "value": "Bearer {{$env.KAPSO_TOKEN}}" }] },
+        "sendBody": true,
+        "contentType": "json",
+        "jsonBody": "={\"to\":\"{{$json.telefono}}\",\"text\":\"Reserva confirmada: {{$json.reservaId}}. Tu QR llega aquí.\"}"
+      }
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook (Kapso)": { "main": [[{ "node": "Clasificar intención", "type": "main", "index": 0 }]] },
+    "Clasificar intención": { "main": [[
+      { "node": "GET /menus/semana/ALMUERZO", "type": "main", "index": 0 },
+      { "node": "POST /sagas/reservar-y-pagar", "type": "main", "index": 0 }
+    ]] },
+    "POST /sagas/reservar-y-pagar": { "main": [[{ "node": "Responder por WhatsApp (Kapso)", "type": "main", "index": 0 }]] }
+  }
+}

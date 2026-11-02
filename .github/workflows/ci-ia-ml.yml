@@ -1,0 +1,17 @@
+name: ci-ia-ml
+on:
+  push:
+    paths: ['services/ia-ml-service/**', '.github/workflows/ci-ia-ml.yml']
+  pull_request:
+    paths: ['services/ia-ml-service/**']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: services/ia-ml-service } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: pip install -r requirements.txt
+      - run: python -m pytest -q
+      - run: docker build -t ia-ml-service:${{ github.sha }} .

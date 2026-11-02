@@ -1,0 +1,12 @@
+{
+  "expo": {
+    "name": "Comedor UAGRM",
+    "slug": "comedor-uagrm",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "comedoruagrm",
+    "ios": { "bundleIdentifier": "edu.uagrm.comedor" },
+    "android": { "package": "edu.uagrm.comedor", "permissions": ["CAMERA"] },
+    "plugins": ["expo-camera", "expo-image-picker"]
+  }
+}

@@ -1,0 +1,17 @@
+name: ci-pagos-tickets
+on:
+  push:
+    paths: ['services/pagos-tickets-service/**', '.github/workflows/ci-pagos-tickets.yml']
+  pull_request:
+    paths: ['services/pagos-tickets-service/**']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: services/pagos-tickets-service } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.3', extensions: pdo, pdo_pgsql, mbstring, intl }
+      - run: composer install --no-interaction --prefer-dist
+      - run: ./vendor/bin/phpunit
+      - run: docker build -t pagos-tickets-service:${{ github.sha }} .

@@ -1,0 +1,44 @@
+name: cd-aws
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['services/menu-inventario-service/**', 'services/ia-ml-service/**', 'gateway/api-gateway/**', 'infra/k8s/aws/**']
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions: { id-token: write, contents: read }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE }}
+          aws-region: us-east-1
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - name: Build & push menu-inventario
+        run: |
+          IMG=${{ steps.ecr.outputs.registry }}/menu-inventario-service:${{ github.sha }}
+          docker build -t $IMG services/menu-inventario-service
+          docker push $IMG
+      - name: Build & push ia-ml
+        run: |
+          IMG=${{ steps.ecr.outputs.registry }}/ia-ml-service:${{ github.sha }}
+          docker build -t $IMG services/ia-ml-service
+          docker push $IMG
+      - name: Build & push api-gateway
+        run: |
+          IMG=${{ steps.ecr.outputs.registry }}/api-gateway:${{ github.sha }}
+          docker build -t $IMG gateway/api-gateway
+          docker push $IMG
+      - uses: aws-actions/configure-aws-credentials@v4
+        with: { role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE }}, aws-region: us-east-1 }
+      - name: kubectl apply
+        run: |
+          aws eks update-kubeconfig --name eks-comedor --region us-east-1
+          export ECR_REGISTRY=${{ steps.ecr.outputs.registry }}
+          export IMAGE_TAG=${{ github.sha }}
+          export AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+          envsubst < infra/k8s/aws/menu-inventario-service/deployment.yaml | kubectl apply -f -
+          kubectl apply -R -f infra/k8s/aws/
