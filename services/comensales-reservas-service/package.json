@@ -16,9 +16,6 @@
     "@nestjs/platform-express": "^10.4.0",
     "@nestjs/typeorm": "^10.0.2",
     "@aws-sdk/client-sns": "^3.654.0",
-    "@aws-sdk/client-sqs": "^3.654.0",
-    "class-transformer": "^0.5.1",
-    "class-validator": "^0.14.1",
     "pg": "^8.12.0",
     "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
@@ -38,10 +35,16 @@
     "typescript": "^5.5.4"
   },
   "jest": {
-    "moduleFileExtensions": ["js", "json", "ts"],
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
-    "transform": { "^.+\\.(t|j)s$": "ts-jest" },
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
     "testEnvironment": "node"
   }
 }

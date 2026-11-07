@@ -50,3 +50,5 @@ Thumbs.db
 *secrets*.yaml
 !*secrets.example.yaml
 .env.secrets
+.env.cloud
+.phpunit.result.cache

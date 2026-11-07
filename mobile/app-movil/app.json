@@ -1,12 +1,61 @@
 {
   "expo": {
-    "name": "Comedor UAGRM",
-    "slug": "comedor-uagrm",
-    "version": "1.0.0",
+    "name": "Comedor UAGRM · Reportes",
+    "slug": "comedor-uagrm-reportes",
+    "version": "2.0.0",
     "orientation": "portrait",
+    "userInterfaceStyle": "dark",
     "scheme": "comedoruagrm",
-    "ios": { "bundleIdentifier": "edu.uagrm.comedor" },
-    "android": { "package": "edu.uagrm.comedor", "permissions": ["CAMERA"] },
-    "plugins": ["expo-camera", "expo-image-picker"]
+    "backgroundColor": "#0f172a",
+    "ios": {
+      "bundleIdentifier": "edu.uagrm.comedor",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Para ingresar a tus reportes con tu huella o rostro.",
+        "NSMicrophoneUsageDescription": "Para dictar el reporte que quieres ver.",
+        "NSSpeechRecognitionUsageDescription": "Para entender el reporte que dictas, sin enviar tu voz a internet."
+      }
+    },
+    "android": {
+      "package": "edu.uagrm.comedor",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT",
+        "RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Para ingresar a tus reportes con tu huella o rostro."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Para dictar el reporte que quieres ver.",
+          "speechRecognitionPermission": "Para entender el reporte que dictas, sin enviar tu voz a internet.",
+          "androidSpeechServicePackages": [
+            "com.google.android.googlequicksearchbox",
+            "com.google.android.tts"
+          ]
+        }
+      ],
+      "expo-dev-client",
+      "expo-build-properties"
+    ],
+    "extra": {
+      "apiUrl": "http://192.168.100.65:8080",
+      "keycloakUrl": "http://44.252.104.3:8085"
+    }
   }
 }

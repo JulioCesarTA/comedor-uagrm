@@ -3,8 +3,7 @@ declare(strict_types=1);
 
 namespace App\Infrastructure\Http\Controllers;
 
-use App\Application\Ports\Inbound\{CobrarRacionUseCase, DevolverPagoUseCase};
-use App\Application\Ports\Outbound\{PagoRepositoryPort, PaymentGatewayPort};
+use App\Application\Ports\Inbound\{CobrarRacionUseCase, ConsultarPagosUseCase, DevolverPagoUseCase, ObtenerFacturaUseCase, VerificarPagoUseCase};
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 
@@ -13,8 +12,9 @@ final class PagosController
     public function __construct(
         private readonly CobrarRacionUseCase $cobrar,
         private readonly DevolverPagoUseCase $devolver,
-        private readonly PagoRepositoryPort $pagos,
-        private readonly PaymentGatewayPort $gateway,
+        private readonly ConsultarPagosUseCase $consultar,
+        private readonly ObtenerFacturaUseCase $factura,
+        private readonly VerificarPagoUseCase $verificarPago,
     ) {}
 
     public function cobrar(Request $req, Response $res): Response
@@ -48,15 +48,35 @@ final class PagosController
         return $res->withHeader('Content-Type', 'application/json');
     }
 
+    /** GET /pagos → todos los pagos (solo lectura) para el generador de reportes. */
+    public function listar(Request $req, Response $res): Response
+    {
+        $filas = array_map(fn($p) => [
+            'id' => $p->id, 'reservaId' => $p->reservaId, 'estudiante' => $p->estudianteId,
+            'monto' => $p->monto, 'metodo' => $p->metodo, 'estado' => $p->estado,
+            'ticketId' => $p->ticketId, 'fecha' => $p->createdAt->format(DATE_ATOM),
+        ], $this->consultar->listar());
+        $res->getBody()->write(json_encode($filas));
+        return $res->withHeader('Content-Type', 'application/json');
+    }
+
     public function ver(Request $req, Response $res, array $args): Response
     {
-        $p = $this->pagos->findById($args['id']);
+        $p = $this->consultar->ver($args['id']);
         if (!$p) return $res->withStatus(404);
         $res->getBody()->write(json_encode([
             'id' => $p->id, 'reservaId' => $p->reservaId, 'monto' => $p->monto,
             'metodo' => $p->metodo, 'estado' => $p->estado, 'ticketId' => $p->ticketId,
         ]));
         return $res->withHeader('Content-Type', 'application/json');
+    }
+
+    /** GET /pagos/recibo/{referencia} → {url, tipo} de la factura de Stripe. */
+    public function recibo(Request $req, Response $res, array $args): Response
+    {
+        $out = $this->factura->execute($args['referencia']);
+        $res->getBody()->write(json_encode($out));
+        return $res->withStatus(isset($out['url']) ? 200 : 404)->withHeader('Content-Type', 'application/json');
     }
 
     /**
@@ -67,8 +87,7 @@ final class PagosController
      */
     public function verificar(Request $req, Response $res, array $args): Response
     {
-        $referencia = $args['referencia'];
-        $out = $this->gateway->verificarPago($referencia);
+        $out = $this->verificarPago->execute($args['referencia']);
         $res->getBody()->write(json_encode($out));
         return $res->withHeader('Content-Type', 'application/json');
     }

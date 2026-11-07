@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { headers } from 'next/headers';
-import Sidebar from './components/Sidebar';
 import SSOReceiver from './components/SSOReceiver';
 import EmbedShell from './components/EmbedShell';
 import './globals.css';
@@ -15,7 +14,7 @@ export const metadata: Metadata = {
     default: 'Comedor UAGRM — Inteligencia de Negocio',
     template: '%s · BI Comedor UAGRM',
   },
-  description: 'Dashboards ML, agentes IA y reportes generativos para el Comedor Universitario UAGRM. Construido con Next.js 14 App Router.',
+  description: 'Modelos de IA (regresión, clustering y visión) para el Comedor Universitario UAGRM.',
   authors: [{ name: 'Grupo #25 · UAGRM' }],
   robots: { index: false, follow: false },
 };

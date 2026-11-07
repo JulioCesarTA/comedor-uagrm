@@ -1,8 +1,6 @@
-import { Injectable } from '@nestjs/common';
 import { ReservaRepo } from './ports';
 
 /** Punto de servicio: valida un QR y marca la reserva como consumida. */
-@Injectable()
 export class ValidarIngresoUseCase {
   constructor(private readonly reservas: ReservaRepo) {}
 

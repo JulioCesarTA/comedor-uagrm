@@ -1,9 +1,9 @@
 <?php
 declare(strict_types=1);
 
-use App\Application\Ports\Inbound\{CobrarRacionUseCase, DevolverPagoUseCase};
+use App\Application\Ports\Inbound\{CobrarRacionUseCase, ConsultarPagosUseCase, DevolverPagoUseCase, ObtenerFacturaUseCase, VerificarPagoUseCase};
 use App\Application\Ports\Outbound\{PagoRepositoryPort, TicketRepositoryPort, PaymentGatewayPort, EventBusPort};
-use App\Application\Services\{CobrarRacionService, DevolverPagoService};
+use App\Application\Services\{CobrarRacionService, ConsultarPagosService, DevolverPagoService, ObtenerFacturaService, VerificarPagoService};
 use App\Infrastructure\Adapters\Messaging\SnsEventBusAdapter;
 use App\Infrastructure\Adapters\Persistence\postgres\{PdoPagoRepository, PdoTicketRepository};
 use App\Infrastructure\Adapters\QrBancario\FakeQrBancarioAdapter;
@@ -57,5 +57,8 @@ return function (ContainerBuilder $b): void {
         EventBusPort::class => DI\autowire(SnsEventBusAdapter::class),
         CobrarRacionUseCase::class => DI\autowire(CobrarRacionService::class),
         DevolverPagoUseCase::class => DI\autowire(DevolverPagoService::class),
+        ConsultarPagosUseCase::class => DI\autowire(ConsultarPagosService::class),
+        ObtenerFacturaUseCase::class => DI\autowire(ObtenerFacturaService::class),
+        VerificarPagoUseCase::class => DI\autowire(VerificarPagoService::class),
     ]);
 };

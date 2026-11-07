@@ -8,7 +8,7 @@ def _client():
     return boto3.client(
         "dynamodb",
         region_name=os.getenv("AWS_REGION", "us-east-1"),
-        endpoint_url=os.getenv("DYNAMODB_ENDPOINT", "http://dynamodb-local:8000"),
+        endpoint_url=(os.getenv("DYNAMODB_ENDPOINT", "http://dynamodb-local:8000") or None),   # vacío = DynamoDB real en AWS
         aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID", "test"),
         aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY", "test"),
     )

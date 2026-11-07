@@ -1,65 +1,82 @@
-"""Endpoints de los 6 modelos ML/DL del SPEC §8."""
+"""Los 3 modelos de IA del comedor, con datos reales en tiempo real:
+  - Regresión (supervisado): raciones esperadas por plato, turno y día.
+  - Clustering (no supervisado): agrupación de platos (mantener / ajustar / retirar).
+  - Deep Learning (TensorFlow): porcentaje que se comió cada persona respecto a la porción de referencia."""
 from datetime import date
-from fastapi import APIRouter, UploadFile, File
-from pydantic import BaseModel
 
-from app.services.predictor_demanda import predecir_demanda
-from app.services.predictor_asistencia import probabilidad_no_presentacion
-from app.services.segmentador import segmentar_comensales, agrupar_platos
-from app.services.imagen import estimar_desperdicio, clasificar_calidad_insumo
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile
+from fastapi.responses import FileResponse
+from app.models.predicciones import DemandaIn
+from app.services.analitica import agrupamiento, datos, kpis, regresion, vision
 
 router = APIRouter()
 
 
-class DemandaIn(BaseModel):
-    fecha: date
-    plato_id: str
-    es_feriado: bool = False
-    temperatura_c: float | None = None
-
-
+# ----------------------------- supervisado: regresión -----------------------------
 @router.post("/demanda")
 def demanda(body: DemandaIn):
-    """Supervisado — regresión: raciones esperadas por turno/plato."""
-    return {
-        "fecha": body.fecha, "platoId": body.plato_id,
-        "racionesEstimadas": predecir_demanda(body.model_dump()),
-    }
+    out = regresion.predecir(body.fecha.isoformat(), body.plato_id, body.turno)
+    return {"fecha": body.fecha, "platoId": body.plato_id, "turno": body.turno, **out}
 
 
-class NoShowIn(BaseModel):
-    estudiante_id: str
-    plato_id: str
-    turno: str
+@router.get("/regresion")
+def regresion_estado():
+    return regresion.estado()
 
 
-@router.post("/no-presentacion")
-def no_show(body: NoShowIn):
-    """Supervisado — clasificación: prob de no-show de una reserva."""
-    return {"probNoShow": probabilidad_no_presentacion(body.model_dump())}
+# ----------------------------- indicadores clave -----------------------------
+@router.get("/kpis")
+def indicadores():
+    return kpis.calcular()
 
 
-@router.get("/segmentar-comensales")
-def seg_comensales():
-    """No supervisado: clusters de comensales."""
-    return {"clusters": segmentar_comensales()}
-
-
+# ----------------------------- no supervisado: clustering de platos -----------------------------
 @router.get("/agrupar-platos")
-def ag_platos():
-    """No supervisado: clusters de platos."""
-    return {"clusters": agrupar_platos()}
+def agrupar_platos():
+    return agrupamiento.calcular()
 
 
-@router.post("/desperdicio")
-async def desperdicio(file: UploadFile = File(...)):
-    """CNN (DL): foto de bandeja -> % de desperdicio por componente."""
-    buf = await file.read()
-    return estimar_desperdicio(buf)
+# ----------------------------- deep learning: foto de bandeja -----------------------------
+@router.get("/vision/platos")
+def vision_platos():
+    """Platos de los menús de hoy (o del último día con menú) para elegir al subir la referencia."""
+    filas = [x for x in datos.filas() if x["fecha"] <= date.today().isoformat()]
+    ultimo = max((x["fecha"] for x in filas), default=None)
+    return {"hoy": date.today().isoformat(), "fecha": ultimo,
+            "platos": [{"platoId": x["platoId"], "turno": x["turno"], "fecha": x["fecha"]} for x in filas if x["fecha"] == ultimo]}
 
 
-@router.post("/calidad-insumo")
-async def calidad(file: UploadFile = File(...)):
-    """CNN (DL): foto de insumo recibido -> clase de calidad."""
-    buf = await file.read()
-    return clasificar_calidad_insumo(buf)
+@router.post("/vision/referencia")
+async def vision_referencia(file: UploadFile = File(...), plato_id: str = Form(...), fecha: str = Form(...), turno: str = Form(...)):
+    try:
+        return vision.registrar_referencia(await file.read(), plato_id, fecha, turno)
+    except Exception as e:
+        raise HTTPException(400, f"No se pudo leer la imagen: {e}")
+
+
+@router.get("/vision/referencias")
+def vision_referencias():
+    return vision.referencias()
+
+
+@router.post("/vision/bandeja")
+async def vision_bandeja(file: UploadFile = File(...), ref_id: str = Form(...)):
+    try:
+        return vision.analizar_bandeja(await file.read(), ref_id)
+    except ValueError as e:
+        raise HTTPException(404, str(e))
+    except Exception as e:
+        raise HTTPException(400, f"No se pudo analizar la imagen: {e}")
+
+
+@router.get("/vision/resumen")
+def vision_resumen():
+    return {**vision.resumen(), "modelo": vision.nombre_modelo()}
+
+
+@router.get("/vision/foto/{carpeta}/{fid}")
+def vision_foto(carpeta: str, fid: str):
+    ruta = vision.ruta_foto(carpeta, fid)
+    if not ruta:
+        raise HTTPException(404, "Foto no encontrada")
+    return FileResponse(ruta, media_type="image/jpeg")

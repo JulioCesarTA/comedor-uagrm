@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
 import { ReservaRepo, EventBusPort, QrGeneratorPort } from './ports';
+import { NoEncontradoError } from '../entities/errores';
 
 /** Paso 4 de la Saga 1: confirma y emite QR. */
-@Injectable()
 export class ConfirmarReservaUseCase {
   constructor(
     private readonly reservas: ReservaRepo,
@@ -12,7 +11,7 @@ export class ConfirmarReservaUseCase {
 
   async execute(reservaId: string): Promise<{ reservaId: string; qr: string }> {
     const r = await this.reservas.findById(reservaId);
-    if (!r) throw new Error('Reserva no existe');
+    if (!r) throw new NoEncontradoError('Reserva no existe');
     const qr = await this.qr.generar({
       reservaId: r.id,
       estudianteId: r.estudianteId,

@@ -10,4 +10,6 @@ interface PaymentGatewayPort
     public function devolver(string $referencia): bool;
     /** @return array{paid:bool,status:string,amount?:int,sessionId?:string,error?:string} */
     public function verificarPago(string $referencia): array;
+    /** @return array{url?:string, tipo?:string, error?:string} factura (o recibo) hospedada por la pasarela */
+    public function facturaUrl(string $referencia): array;
 }

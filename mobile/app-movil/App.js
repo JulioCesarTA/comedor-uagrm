@@ -1,138 +1,125 @@
-// Comedor UAGRM — App móvil (React Native + Expo).
-// Dos modos: estudiante (menú/reserva/QR) y punto de servicio (validar QR offline, foto de bandeja).
-import React, { useState, useEffect } from 'react';
-import { Text, View, TouchableOpacity, FlatList, Alert, StyleSheet } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as SQLite from 'expo-sqlite';
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
-
-const Stack = createStackNavigator();
-const API = 'http://44.252.104.3:8080'; // AWS us-west-2 real
-
-// ---------- offline queue + SQLite (SPEC §6) ----------
-const db = SQLite.openDatabaseSync('comedor.db');
-db.execSync(`
-  CREATE TABLE IF NOT EXISTS cola_sync (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    idem_key TEXT UNIQUE,
-    tipo TEXT, payload TEXT, estado TEXT DEFAULT 'pendiente'
-  );
-  CREATE TABLE IF NOT EXISTS reservas_turno (
-    reserva_id TEXT PRIMARY KEY, estudiante_id TEXT, qr TEXT, consumida INTEGER DEFAULT 0
-  );
-`);
-
-function HomeScreen({ navigation }) {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.h1}>Comedor UAGRM</Text>
-      <TouchableOpacity style={styles.btn} onPress={() => navigation.navigate('Estudiante')}>
-        <Text style={styles.btnTxt}>Modo estudiante</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.btn, { backgroundColor: '#16a34a' }]} onPress={() => navigation.navigate('PuntoServicio')}>
-        <Text style={styles.btnTxt}>Modo punto de servicio</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}
-
-function EstudianteScreen() {
-  const [menu, setMenu] = useState([]);
-  useEffect(() => {
-    fetch(`${API}/menus/semana/ALMUERZO`).then(r => r.json()).then(setMenu).catch(() => setMenu([]));
-  }, []);
-  const reservar = async (m, platoId) => {
-    const idem = `mob-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-    const payload = {
-      estudiante_id: 'mob-est-1', menu_id: m.id, plato_id: platoId,
-      fecha: m.fecha, turno: 'ALMUERZO', metodo_pago: 'qr_bancario', monto: 8, idempotency_key: idem,
-    };
-    try {
-      const r = await fetch(`${API}/sagas/reservar-y-pagar`, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      const data = await r.json();
-      Alert.alert('✅ Reserva', `ID: ${data.reservaId}`);
-    } catch {
-      // Sin red: encolar
-      db.runSync('INSERT OR IGNORE INTO cola_sync (idem_key, tipo, payload) VALUES (?, ?, ?)',
-        [idem, 'reservar-y-pagar', JSON.stringify(payload)]);
-      Alert.alert('📴 Sin red', 'Reserva encolada; se sincroniza al volver.');
-    }
-  };
-  return (
-    <View style={styles.container}>
-      <Text style={styles.h2}>Menú de la semana</Text>
-      <FlatList data={menu} keyExtractor={m => m.id}
-        renderItem={({ item: m }) => (
-          <View style={styles.card}>
-            <Text style={{ fontWeight: 'bold' }}>{m.fecha} · {m.turno}</Text>
-            {Object.keys(m.porciones || {}).map(platoId => (
-              <TouchableOpacity key={platoId} onPress={() => reservar(m, platoId)}>
-                <Text style={{ color: '#2563eb' }}>Reservar {platoId}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )} />
-    </View>
-  );
-}
-
-function PuntoServicioScreen() {
-  const descargarTurno = async () => {
-    // Pre-descarga reservas del turno (SPEC §6)
-    try {
-      const r = await fetch(`${API}/reservas?turno=ALMUERZO`);
-      const list = await r.json();
-      list.forEach(x => db.runSync(
-        'INSERT OR REPLACE INTO reservas_turno (reserva_id, estudiante_id, qr) VALUES (?,?,?)',
-        [x.id, x.estudianteId, x.qrCode || ''])
-      );
-      Alert.alert('Descarga', `${list.length} reservas en caché offline`);
-    } catch { Alert.alert('Error', 'Sin red; usando caché existente'); }
-  };
-  const validarQrOffline = (qr) => {
-    const row = db.getFirstSync('SELECT * FROM reservas_turno WHERE qr = ?', [qr]);
-    if (!row) return Alert.alert('❌ QR inválido');
-    if (row.consumida) return Alert.alert('⚠️ Ya consumida');
-    db.runSync('UPDATE reservas_turno SET consumida = 1 WHERE reserva_id = ?', [row.reserva_id]);
-    Alert.alert('✅ Ingreso válido', `Reserva ${row.reserva_id}`);
-  };
-  return (
-    <View style={styles.container}>
-      <Text style={styles.h2}>Punto de servicio</Text>
-      <TouchableOpacity style={styles.btn} onPress={descargarTurno}>
-        <Text style={styles.btnTxt}>Descargar reservas del turno</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.btn} onPress={() => validarQrOffline('demo-qr')}>
-        <Text style={styles.btnTxt}>Validar QR (demo)</Text>
-      </TouchableOpacity>
-      <Text style={{ marginTop: 16, color: '#666' }}>
-        En este modo también se toma foto de bandeja → IA local (TFLite) estima % de desperdicio.
-      </Text>
-    </View>
-  );
-}
+// Comedor UAGRM — App móvil de reportes (React Native + Expo).
+// Solo hace una cosa: generar reportes con IA dentro del teléfono, sin internet, por texto o por voz.
+// Ingreso con usuario y contraseña (Keycloak) y con huella; los datos se descargan cuando hay conexión.
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, View } from 'react-native';
+import { C, S } from './src/componentes/tema';
+import { PREDETERMINADO } from './src/config';
+import { borrar, guardar, leer } from './src/cuenta/almacen';
+import { renovarSesion } from './src/cuenta/auth';
+import { estadoBiometria, nombreBiometria, pedirHuella } from './src/cuenta/biometria';
+import { alCambiarRed, borrarLocal, cargarLocal, descargar, hayRed } from './src/datos';
+import Ajustes from './src/pantallas/Ajustes';
+import Login from './src/pantallas/Login';
+import Reportes from './src/pantallas/Reportes';
 
 export default function App() {
+  const [fase, setFase] = useState('cargando');           // cargando | login | principal
+  const [cfg, setCfg] = useState(PREDETERMINADO);
+  const [perfilGuardado, setPerfilGuardado] = useState(null);
+  const [bioActiva, setBioActiva] = useState(false);
+  const [sesion, setSesion] = useState(null);             // { perfil, accessToken }
+  const [datos, setDatos] = useState(null);
+  const [enLinea, setEnLinea] = useState(false);
+  const [sincronizando, setSincronizando] = useState(false);
+  const [errorSync, setErrorSync] = useState('');
+  const [ajustes, setAjustes] = useState(false);
+  const sesionRef = useRef(null);
+  sesionRef.current = sesion;
+
+  useEffect(() => {
+    (async () => {
+      const guardada = await leer('cfg');
+      if (guardada) setCfg({ ...PREDETERMINADO, ...guardada });
+      setPerfilGuardado(await leer('perfil'));
+      setBioActiva((await leer('bio')) === true);
+      setDatos(await cargarLocal());
+      setEnLinea(await hayRed());
+      setFase('login');
+    })();
+  }, []);
+
+  // ----------------------------- datos -----------------------------
+
+  const sincronizar = useCallback(async () => {
+    const s = sesionRef.current;
+    if (!s) return;
+    setSincronizando(true); setErrorSync('');
+    try {
+      let token = s.accessToken;
+      const refresh = await leer('refresh');
+      if (refresh) {                                     // el token de acceso dura minutos: se renueva antes de pedir los datos
+        try {
+          const n = await renovarSesion(refresh, cfg);
+          await guardar('refresh', n.refreshToken);
+          token = n.accessToken;
+          setSesion((x) => (x ? { ...x, accessToken: token } : x));
+        } catch { /* sin internet o sesión vencida: se intenta igual con lo que hay */ }
+      }
+      setDatos(await descargar({ api: cfg.api, token, rol: s.perfil.roles.join(',') || s.perfil.rol }));
+    } catch (e) { setErrorSync(e.message || String(e)); }
+    finally { setSincronizando(false); }
+  }, [cfg]);
+
+  useEffect(() => {                                       // al entrar y cada vez que vuelve la conexión
+    if (fase !== 'principal') return undefined;
+    sincronizar();
+    return alCambiarRed((c) => { setEnLinea(c); if (c) sincronizar(); });
+  }, [fase, sincronizar]);
+
+  // ----------------------------- huella -----------------------------
+
+  async function activarHuella() {
+    const est = await estadoBiometria();
+    const r = await pedirHuella(`Pon ${nombreBiometria(est)} para activar el ingreso rápido`);
+    if (!r.ok) { Alert.alert('No se activó', 'No se pudo confirmar tu huella. Puedes activarla después en Ajustes.'); return; }
+    await guardar('bio', true);
+    setBioActiva(true);
+    Alert.alert('Listo', 'Desde ahora puedes entrar con tu huella, incluso sin internet.');
+  }
+
+  async function ofrecerHuella() {
+    if ((await leer('bio')) !== null) return;             // ya decidió antes
+    const est = await estadoBiometria();
+    if (!est.hardware || !est.registrada) return;         // sin sensor o sin huellas: lo verá en Ajustes
+    Alert.alert('¿Entrar con tu huella?', 'Regístrala para ingresar más rápido, incluso sin internet.', [
+      { text: 'Ahora no', style: 'cancel', onPress: () => guardar('bio', false) },
+      { text: 'Activar', onPress: activarHuella },
+    ]);
+  }
+
+  // ----------------------------- sesión -----------------------------
+
+  function entrar({ perfil, accessToken, enLinea: conRed }) {
+    setPerfilGuardado(perfil);
+    setSesion({ perfil, accessToken });
+    setEnLinea(!!conRed || enLinea);
+    setFase('principal');
+    setTimeout(ofrecerHuella, 700);
+  }
+
+  async function salir(olvidarHuella) {
+    setAjustes(false); setSesion(null); setFase('login'); setErrorSync('');
+    if (olvidarHuella) {
+      await Promise.all(['bio', 'refresh', 'perfil', 'clave', 'historial'].map(borrar));
+      await borrarLocal();
+      setBioActiva(false); setPerfilGuardado(null); setDatos(null);
+    }
+  }
+
+  if (fase === 'cargando') {
+    return <View style={[S.pantalla, { alignItems: 'center', justifyContent: 'center' }]}><ActivityIndicator size="large" color={C.naranja} /></View>;
+  }
+  if (fase === 'login') {
+    return <Login cfg={cfg} setCfg={setCfg} perfilGuardado={perfilGuardado} bioActiva={bioActiva} onEntrar={entrar} />;
+  }
   return (
-    <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'Comedor UAGRM' }} />
-        <Stack.Screen name="Estudiante" component={EstudianteScreen} />
-        <Stack.Screen name="PuntoServicio" component={PuntoServicioScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={S.pantalla}>
+      <Reportes perfil={sesion.perfil} datos={datos} enLinea={enLinea} sincronizando={sincronizando} errorSync={errorSync}
+        onSincronizar={sincronizar} onAjustes={() => setAjustes(true)} />
+      <Ajustes visible={ajustes} onCerrar={() => setAjustes(false)} perfil={sesion.perfil} bioActiva={bioActiva} setBioActiva={setBioActiva}
+        cfg={cfg} setCfg={setCfg} datos={datos} sincronizando={sincronizando} onSincronizar={sincronizar}
+        onBorrarDatos={async () => { await borrarLocal(); setDatos(null); }} onSalir={salir} />
+    </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#fff' },
-  h1: { fontSize: 28, fontWeight: 'bold', marginBottom: 24, textAlign: 'center' },
-  h2: { fontSize: 20, fontWeight: 'bold', marginBottom: 16 },
-  btn: { backgroundColor: '#2563eb', padding: 16, borderRadius: 8, marginBottom: 12 },
-  btnTxt: { color: '#fff', fontWeight: 'bold', textAlign: 'center' },
-  card: { padding: 12, borderWidth: 1, borderColor: '#ddd', borderRadius: 8, marginBottom: 8 },
-});

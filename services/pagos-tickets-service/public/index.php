@@ -26,7 +26,9 @@ $app->get('/health', fn (Request $r, Response $s) => (function () use ($s) {
 $app->post('/pagos/cobrar', [PagosController::class, 'cobrar']);
 $app->post('/pagos/{id}/devolver', [PagosController::class, 'devolver']);
 $app->get('/pagos/verificar/{referencia}', [PagosController::class, 'verificar']);
-$app->get('/pagos/{id}', [PagosController::class, 'ver']);
+$app->get('/pagos', [PagosController::class, 'listar']);
+$app->get('/pagos/recibo/{referencia}', [PagosController::class, 'recibo']);
+$app->get('/pagos/{id}',[PagosController::class, 'ver']);
 
 // CORS para que lo pueda llamar directo el portal (React en 3002/3000)
 $app->add(function (Request $req, $handler) {

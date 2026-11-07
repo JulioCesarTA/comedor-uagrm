@@ -225,6 +225,14 @@ services:
     environment:
       APP_ENV: production
       CQRS_DATABASE_URL: postgresql://${POSTGRES_CQRS_USER}:${POSTGRES_CQRS_PASSWORD}@postgres-cqrs:5432/${POSTGRES_CQRS_DB}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_API_URL: ${TELEGRAM_API_URL:-https://api.telegram.org}
+      TZ: America/La_Paz
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       DYNAMODB_ENDPOINT: ${DYNAMODB_ENDPOINT}
       AWS_REGION: ${AWS_REGION}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
@@ -236,6 +244,8 @@ services:
       postgres-cqrs: { condition: service_healthy }
       dynamodb-local: { condition: service_started }
       localstack: { condition: service_started }
+    volumes:
+      - ia-data:/data
     networks: [comedor-net]
 
   # ---------------- GATEWAYS ----------------
@@ -250,6 +260,8 @@ services:
       AUTH_DISABLED: "true"
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       MENU_URL: http://menu-inventario-service:8080
       COMENSALES_URL: http://comensales-reservas-service:8080
       PAGOS_URL: http://pagos-tickets-service:8080
@@ -308,7 +320,9 @@ services:
     build: { context: ./frontend/inteligencia-negocio, dockerfile: Dockerfile }
     container_name: comedor-bi
     restart: unless-stopped
-    ports: ["${PORT_INTELIGENCIA_NEGOCIO}:80"]
+    environment:
+      API_INTERNAL_URL: http://api-gateway:8080
+    ports: ["${PORT_INTELIGENCIA_NEGOCIO}:3003"]
     networks: [comedor-net]
 
 networks:
@@ -316,6 +330,7 @@ networks:
     driver: bridge
 
 volumes:
+  ia-data:
   mongo-data:
   postgres-comensales-data:
   postgres-pagos-data:

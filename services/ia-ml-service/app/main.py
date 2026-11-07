@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import predicciones, agentes, reportes, sagas
+from app.services import programador, telegram_bot
 
 app = FastAPI(title="ia-ml-service", version="1.0.0",
               description="Comedor UAGRM — IA/ML + Agentes + Saga orchestrator")
@@ -10,6 +11,15 @@ app = FastAPI(title="ia-ml-service", version="1.0.0",
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def _arrancar_vigilancia() -> None:
+    telegram_bot.iniciar()
+    programador.iniciar()
+    import threading
+    from app.services.analitica import vision      # precarga la CNN para que la primera foto no espere
+    threading.Thread(target=vision.nombre_modelo, daemon=True, name="precarga-cnn").start()
+
 
 @app.get("/health")
 def health() -> dict:

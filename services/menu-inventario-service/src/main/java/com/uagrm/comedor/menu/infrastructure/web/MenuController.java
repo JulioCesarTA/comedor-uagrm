@@ -5,7 +5,7 @@ import com.uagrm.comedor.menu.application.usecase.ApartarPorcionUseCase;
 import com.uagrm.comedor.menu.application.usecase.ArmarMenuSemanalUseCase;
 import com.uagrm.comedor.menu.application.usecase.LiberarPorcionUseCase;
 import com.uagrm.comedor.menu.domain.model.Turno;
-import com.uagrm.comedor.menu.domain.repository.MenuRepository;
+import com.uagrm.comedor.menu.application.usecase.ConsultarMenusUseCase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,13 +18,10 @@ import java.util.Map;
 public class MenuController {
 
     private final ArmarMenuSemanalUseCase armar;
-    private final ApartarPorcionUseCase apartar;
-    private final LiberarPorcionUseCase liberar;
-    private final MenuRepository repo;
+    private final ConsultarMenusUseCase consultar;
 
-    public MenuController(ArmarMenuSemanalUseCase a, ApartarPorcionUseCase ap,
-                          LiberarPorcionUseCase l, MenuRepository r) {
-        this.armar = a; this.apartar = ap; this.liberar = l; this.repo = r;
+    public MenuController(ArmarMenuSemanalUseCase a, ConsultarMenusUseCase c) {
+        this.armar = a; this.consultar = c;
     }
 
     @PostMapping
@@ -33,16 +30,13 @@ public class MenuController {
     }
 
     @GetMapping("/semana/{turno}")
-    public List<MenuDto> semana(@PathVariable Turno turno,
-                                @RequestParam(required = false) String inicio) {
-        LocalDate i = inicio != null ? LocalDate.parse(inicio) : LocalDate.now().with(java.time.DayOfWeek.MONDAY);
-        return repo.findBySemana(i, turno).stream().map(MenuDto::from).toList();
+    public List<MenuDto> semana(@PathVariable Turno turno, @RequestParam(required = false) String inicio) {
+        return consultar.semana(turno, inicio != null ? LocalDate.parse(inicio) : null);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<MenuDto> uno(@PathVariable String id) {
-        return repo.findById(id).map(MenuDto::from).map(ResponseEntity::ok)
-            .orElse(ResponseEntity.notFound().build());
+        return consultar.porId(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 }
 

@@ -8,5 +8,4 @@ public interface InsumoRepository {
     Insumo save(Insumo insumo);
     Optional<Insumo> findById(String id);
     List<Insumo> findAll();
-    List<Insumo> findStockBajo();
 }

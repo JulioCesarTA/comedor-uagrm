@@ -1,7 +1,4 @@
 package com.uagrm.comedor.menu.domain.model;
 
-public record Lote(String loteId, Cantidad cantidad, FechaVencimiento vencimiento) {
-    public Lote consumir(Cantidad c) {
-        return new Lote(loteId, cantidad.restar(c), vencimiento);
-    }
-}
+/** Objeto de valor: una partida de un insumo con su cantidad y fecha de vencimiento. */
+public record Lote(String loteId, Cantidad cantidad, FechaVencimiento vencimiento) {}

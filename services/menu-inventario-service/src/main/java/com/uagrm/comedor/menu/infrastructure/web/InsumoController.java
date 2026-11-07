@@ -1,9 +1,9 @@
 package com.uagrm.comedor.menu.infrastructure.web;
 
+import com.uagrm.comedor.menu.application.dto.InsumoDto;
+import com.uagrm.comedor.menu.application.usecase.ConsultarInsumosUseCase;
+import com.uagrm.comedor.menu.application.usecase.CrearInsumoUseCase;
 import com.uagrm.comedor.menu.application.usecase.RegistrarLoteUseCase;
-import com.uagrm.comedor.menu.domain.model.Insumo;
-import com.uagrm.comedor.menu.domain.repository.InsumoRepository;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -13,26 +13,22 @@ import java.util.Map;
 @RequestMapping("/insumos")
 public class InsumoController {
 
-    private final InsumoRepository repo;
+    private final CrearInsumoUseCase crearInsumo;
+    private final ConsultarInsumosUseCase consultarInsumos;
     private final RegistrarLoteUseCase registrarLote;
 
-    public InsumoController(InsumoRepository r, RegistrarLoteUseCase u) {
-        this.repo = r; this.registrarLote = u;
+    public InsumoController(CrearInsumoUseCase c, ConsultarInsumosUseCase q, RegistrarLoteUseCase u) {
+        this.crearInsumo = c; this.consultarInsumos = q; this.registrarLote = u;
     }
-
-    public record CrearInsumoReq(String id, String nombre, String unidad, double stockMinimo) {}
 
     @PostMapping
-    public ResponseEntity<Insumo> crear(@RequestBody CrearInsumoReq r) {
-        Insumo i = new Insumo(r.id(), r.nombre(), r.unidad(), r.stockMinimo());
-        return ResponseEntity.ok(repo.save(i));
-    }
+    public InsumoDto crear(@RequestBody CrearInsumoUseCase.Entrada e) { return crearInsumo.ejecutar(e); }
 
     @GetMapping
-    public List<Insumo> listar() { return repo.findAll(); }
+    public List<InsumoDto> listar() { return consultarInsumos.listar(); }
 
     @GetMapping("/stock-bajo")
-    public List<Insumo> stockBajo() { return repo.findStockBajo(); }
+    public List<InsumoDto> stockBajo() { return consultarInsumos.stockBajo(); }
 
     @PostMapping("/lotes")
     public Map<String, Object> registrarLote(@RequestBody RegistrarLoteUseCase.Entrada e) {

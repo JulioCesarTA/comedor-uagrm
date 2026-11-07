@@ -25,7 +25,7 @@ export class BecaGateway extends BecaRepo {
     });
     return b;
   }
-  async listar(): Promise<Beca[]> {
+  async listarTodas(): Promise<Beca[]> {
     const rows = await this.repo.find();
     return rows.map(o => new Beca(o.id, o.estudianteId, o.tipo as TipoBeca,
       o.cupoRacionesMes, o.racionesUsadasMes, o.vigenteDesde, o.vigenteHasta));

@@ -1,18 +1,13 @@
-"""SPEC §10: reportes generativos — el LLM elige consulta predefinida, nunca SQL libre."""
-from fastapi import APIRouter
-from pydantic import BaseModel
+"""Datos para los reportes de la app móvil (los reportes se generan en el celular, sin internet)."""
+from fastapi import APIRouter, Header
 
-from app.services.reportes.generador import GeneradorReportes
+from app.services.reportes import snapshot
 
 router = APIRouter()
 
 
-class ReportePeticion(BaseModel):
-    pregunta: str
-    rol_usuario: str
-    formato: str = "json"  # json | excel | pdf
-
-
-@router.post("/pedir")
-def pedir_reporte(body: ReportePeticion):
-    return GeneradorReportes().responder(body.pregunta, body.rol_usuario, body.formato)
+@router.get("/snapshot")
+def get_snapshot(rol: str = "administrador", x_roles: str | None = Header(default=None)):
+    """Copia de los datos permitidos para el rol. Con la autenticación activa, el gateway fija x-roles desde el token."""
+    roles = [r.strip() for r in (x_roles or rol).split(",") if r.strip()]
+    return snapshot.construir(roles)

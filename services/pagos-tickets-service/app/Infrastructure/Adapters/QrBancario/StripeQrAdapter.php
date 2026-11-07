@@ -31,25 +31,23 @@ final class StripeQrAdapter implements PaymentGatewayPort
             // Monto en centavos
             $amount = (int) round($monto * 100);
 
-            // 1) Crear producto one-off
-            $product = $this->stripe->products->create([
-                'name' => "Ración comedor UAGRM — ref $referencia",
-            ]);
-
-            // 2) Precio
-            $price = $this->stripe->prices->create([
-                'unit_amount' => $amount,
-                'currency' => 'usd',
-                'product' => $product->id,
-            ]);
-
-            // 3) Payment Link
-            $link = $this->stripe->paymentLinks->create([
+            $portal = getenv('PORTAL_URL') ?: 'http://localhost:3000/portal';
+            $link = $this->stripe->checkout->sessions->create([
+                'mode' => 'payment',
+                'payment_method_types' => ['card'],
+                'client_reference_id' => $referencia,
+                'invoice_creation' => ['enabled' => true],
+                'metadata' => ['referencia' => $referencia],
                 'line_items' => [[
-                    'price' => $price->id,
+                    'price_data' => [
+                        'currency' => 'usd',
+                        'unit_amount' => $amount,
+                        'product_data' => ['name' => 'Ración del comedor universitario'],
+                    ],
                     'quantity' => 1,
                 ]],
-                'metadata' => ['referencia' => $referencia],
+                'success_url' => $portal . '?pago=ok',
+                'cancel_url' => $portal . '?pago=cancelado',
             ]);
 
             // 4) QR del Payment Link URL
@@ -81,34 +79,46 @@ final class StripeQrAdapter implements PaymentGatewayPort
      * Un Payment Link puede generar múltiples checkout sessions:
      * si al menos una está 'paid' consideramos la referencia pagada.
      */
-    public function verificarPago(string $paymentLinkId): array
+    public function verificarPago(string $sessionId): array
     {
         try {
-            $sessions = $this->stripe->checkout->sessions->all([
-                'payment_link' => $paymentLinkId,
-                'limit' => 10,
-            ]);
-            foreach ($sessions->data as $s) {
-                if (($s->payment_status ?? '') === 'paid') {
-                    return [
-                        'paid' => true,
-                        'status' => 'paid',
-                        'amount' => $s->amount_total ?? 0,
-                        'sessionId' => $s->id,
-                        'currency' => $s->currency ?? 'usd',
-                    ];
-                }
-            }
-            // Ninguna session paid todavía
-            $last = $sessions->data[0] ?? null;
+            $s = $this->stripe->checkout->sessions->retrieve($sessionId);
+            $paid = ($s->payment_status ?? '') === 'paid';
             return [
-                'paid' => false,
-                'status' => $last ? ($last->payment_status ?? 'open') : 'no_sessions',
-                'sessionId' => $last?->id,
+                'paid' => $paid,
+                'status' => $s->payment_status ?? 'unknown',
+                'amount' => $s->amount_total ?? 0,
+                'sessionId' => $s->id,
+                'currency' => $s->currency ?? 'usd',
             ];
         } catch (\Throwable $e) {
             $this->log->error("Stripe verificar falló: " . $e->getMessage());
             return ['paid' => false, 'status' => 'error', 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Factura hospedada de Stripe (si la sesión generó invoice) o, en su defecto,
+     * el recibo del cargo. Solo existe cuando la sesión está pagada.
+     */
+    public function facturaUrl(string $referencia): array
+    {
+        try {
+            $s = $this->stripe->checkout->sessions->retrieve($referencia, [
+                'expand' => ['invoice', 'payment_intent.latest_charge'],
+            ]);
+            if (($s->payment_status ?? '') !== 'paid') {
+                return ['error' => 'El pago todavía no está acreditado'];
+            }
+            if (!empty($s->invoice->hosted_invoice_url)) {
+                return ['url' => $s->invoice->hosted_invoice_url, 'tipo' => 'factura', 'pdf' => $s->invoice->invoice_pdf ?? null];
+            }
+            $receipt = $s->payment_intent->latest_charge->receipt_url ?? null;
+            if ($receipt) return ['url' => $receipt, 'tipo' => 'recibo'];
+            return ['error' => 'Stripe aún no emitió la factura'];
+        } catch (\Throwable $e) {
+            $this->log->error("Stripe factura falló: " . $e->getMessage());
+            return ['error' => $e->getMessage()];
         }
     }
 
@@ -117,7 +127,7 @@ final class StripeQrAdapter implements PaymentGatewayPort
         try {
             // En producción harías refund del PaymentIntent asociado.
             // Para demo: desactivar el payment link.
-            $this->stripe->paymentLinks->update($referencia, ['active' => false]);
+            $this->stripe->checkout->sessions->expire($referencia);
             return true;
         } catch (\Throwable $e) {
             $this->log->error("Stripe refund falló: " . $e->getMessage());

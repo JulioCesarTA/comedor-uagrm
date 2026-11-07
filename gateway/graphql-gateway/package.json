@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "description": "Comedor UAGRM — Apollo Federation (solo back-office Angular)",
   "main": "server.js",
-  "scripts": { "start": "node server.js" },
+  "scripts": {
+    "start": "node server.js"
+  },
   "dependencies": {
     "@apollo/server": "^4.11.0",
-    "@apollo/gateway": "^2.9.0",
     "graphql": "^16.9.0",
     "graphql-tag": "^2.12.6",
     "axios": "^1.7.7"

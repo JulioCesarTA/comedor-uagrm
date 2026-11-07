@@ -21,6 +21,11 @@ final class FakeQrBancarioAdapter implements PaymentGatewayPort
         return true;
     }
 
+    public function facturaUrl(string $referencia): array
+    {
+        return ['error' => 'Factura no disponible: Stripe no está configurado'];
+    }
+
     public function verificarPago(string $referencia): array
     {
         // Fake sin Stripe: siempre lo da por pagado (modo dev)

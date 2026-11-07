@@ -32,4 +32,8 @@ export class ReservaGateway extends ReservaRepo {
     const os = await this.repo.find({ where: { estudianteId: estId } });
     return os.map(o => this.toDomain(o));
   }
+  async listarTodas(): Promise<Reserva[]> {
+    const os = await this.repo.find({ order: { createdAt: 'ASC' } });
+    return os.map(o => this.toDomain(o));
+  }
 }
