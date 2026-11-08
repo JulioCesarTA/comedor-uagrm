@@ -56,3 +56,5 @@ Thumbs.db
 .env.cloud.nuevo
 
 .comedor-app.keys.tmp
+
+CREDENCIALES.local.md
