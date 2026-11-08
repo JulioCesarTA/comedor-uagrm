@@ -58,3 +58,7 @@ Thumbs.db
 .comedor-app.keys.tmp
 
 CREDENCIALES.local.md
+
+respaldo/
+
+deploy/ec2/realm/
