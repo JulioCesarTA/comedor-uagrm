@@ -17,7 +17,7 @@ final class SnsEventBusAdapter implements EventBusPort
 
     public function publish(string $topic, array $payload): void
     {
-        $arn = sprintf('arn:aws:sns:%s:000000000000:%s', $this->region, $topic);
+        $arn = sprintf('arn:aws:sns:%s:%s:%s', $this->region, getenv('AWS_ACCOUNT_ID') ?: '000000000000', $topic);
         try {
             $this->sns->publish([
                 'TopicArn' => $arn,

@@ -2,7 +2,7 @@
 Las propuestas que requieren decisión llegan al administrador por Telegram y al panel."""
 from fastapi import APIRouter, HTTPException
 
-from app.models.agentes import Horario, Mision, PropuestaLocal
+from app.models.agentes import EventoTelegram, Horario, Mision, PropuestaLocal
 from app.services import programador, propuestas, telegram_bot
 from app.services.agentes import avisos, paquete_offline
 from app.services.agentes.inventario_compras_agent import InventarioComprasAgent
@@ -58,6 +58,12 @@ def rechazar(pid: str):
 @router.get("/telegram")
 def telegram():
     return telegram_bot.estado()
+
+
+@router.post("/telegram/evento")
+def telegram_evento(evento: EventoTelegram):
+    """n8n entrega cada mensaje o botón y ejecuta en Telegram las acciones que se devuelven."""
+    return {"acciones": telegram_bot.procesar_evento(evento.model_dump(exclude_none=True))}
 
 
 # Modo sin conexión del navegador: el panel guarda este paquete y corre los 3 agentes

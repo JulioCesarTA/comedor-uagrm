@@ -54,8 +54,8 @@
       "expo-build-properties"
     ],
     "extra": {
-      "apiUrl": "http://192.168.100.65:8080",
-      "keycloakUrl": "http://44.252.104.3:8085"
+      "apiUrl": "http://32.187.224.152:8080",
+      "keycloakUrl": "http://32.187.224.152:8085"
     }
   }
 }

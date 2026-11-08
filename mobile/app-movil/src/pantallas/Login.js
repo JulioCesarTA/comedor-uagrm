@@ -114,7 +114,7 @@ export default function Login({ cfg, setCfg, perfilGuardado, bioActiva, onEntrar
             <Text style={S.etiqueta}>Servidor del comedor (datos)</Text>
             <TextInput style={S.input} value={api} onChangeText={setApi} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.0.10:8080" placeholderTextColor={C.tenue} />
             <Text style={[S.etiqueta, { marginTop: 12 }]}>Servidor de cuentas (ingreso)</Text>
-            <TextInput style={S.input} value={kc} onChangeText={setKc} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://44.252.104.3:8085" placeholderTextColor={C.tenue} />
+            <TextInput style={S.input} value={kc} onChangeText={setKc} autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://32.187.224.152:8085" placeholderTextColor={C.tenue} />
             <TouchableOpacity onPress={guardarServidor} style={[S.botonSec, { marginTop: 12 }]}><Text style={S.botonSecTxt}>Guardar direcciones</Text></TouchableOpacity>
           </View>
         )}

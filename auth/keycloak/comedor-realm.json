@@ -19,8 +19,8 @@
       "clientId": "backoffice-gestion",
       "enabled": true,
       "publicClient": true,
-      "redirectUris": ["http://44.252.104.3:3001/*", "http://localhost:3001/*"],
-      "webOrigins": ["http://44.252.104.3:3001", "http://localhost:3001", "+"],
+      "redirectUris": ["http://32.187.224.152:3001/*", "http://localhost:3001/*"],
+      "webOrigins": ["http://32.187.224.152:3001", "http://localhost:3001", "+"],
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true
     },
@@ -28,8 +28,8 @@
       "clientId": "portal-estudiante",
       "enabled": true,
       "publicClient": true,
-      "redirectUris": ["http://44.252.104.3:3002/*", "http://localhost:3002/*"],
-      "webOrigins": ["http://44.252.104.3:3002", "http://localhost:3002", "+"],
+      "redirectUris": ["http://32.187.224.152:3002/*", "http://localhost:3002/*"],
+      "webOrigins": ["http://32.187.224.152:3002", "http://localhost:3002", "+"],
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true
     },
@@ -37,8 +37,8 @@
       "clientId": "inteligencia-negocio",
       "enabled": true,
       "publicClient": true,
-      "redirectUris": ["http://44.252.104.3:3003/*", "http://localhost:3003/*"],
-      "webOrigins": ["http://44.252.104.3:3003", "http://localhost:3003", "+"],
+      "redirectUris": ["http://32.187.224.152:3003/*", "http://localhost:3003/*"],
+      "webOrigins": ["http://32.187.224.152:3003", "http://localhost:3003", "+"],
       "protocol": "openid-connect",
       "directAccessGrantsEnabled": true
     },

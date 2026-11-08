@@ -22,7 +22,7 @@ export class SnsBus extends EventBusPort {
   }
 
   async publish(topic: string, payload: any): Promise<void> {
-    const topicArn = `arn:aws:sns:${this.region}:000000000000:${topic}`;
+    const topicArn = `arn:aws:sns:${this.region}:${process.env.AWS_ACCOUNT_ID || '000000000000'}:${topic}`;
     try {
       await this.sns.send(new PublishCommand({
         TopicArn: topicArn,

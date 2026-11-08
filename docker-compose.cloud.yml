@@ -6,7 +6,7 @@ services:
     depends_on: !reset []
     environment:
       SPRING_DATA_MONGODB_URI: ${MONGO_ATLAS_URI}
-      aws_sns_topicDominioMenuArn: arn:aws:sns:us-west-2:948218213765:dominio-menu
+      aws_sns_topicDominioMenuArn: arn:aws:sns:us-west-2:483549541027:dominio-menu
   comensales-reservas-service:
     depends_on: !reset []
     environment:

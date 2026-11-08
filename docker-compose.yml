@@ -138,6 +138,8 @@ services:
       N8N_HOST: ${N8N_HOST}
       N8N_PORT: ${N8N_PORT}
       WEBHOOK_URL: http://localhost:5678/
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       GENERIC_TIMEZONE: America/La_Paz
     ports:
       - "5678:5678"
@@ -227,6 +229,7 @@ services:
       CQRS_DATABASE_URL: postgresql://${POSTGRES_CQRS_USER}:${POSTGRES_CQRS_PASSWORD}@postgres-cqrs:5432/${POSTGRES_CQRS_DB}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_API_URL: ${TELEGRAM_API_URL:-https://api.telegram.org}
+      TELEGRAM_RECEPCION: ${TELEGRAM_RECEPCION:-n8n}
       TZ: America/La_Paz
       KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_REALM: ${KEYCLOAK_REALM}

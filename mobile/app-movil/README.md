@@ -27,8 +27,8 @@ En la pantalla de ingreso, **Servidor** permite fijar las direcciones:
 
 | Qué | Valor por defecto | Para qué |
 |---|---|---|
-| Servidor del comedor | `http://192.168.100.65:8080` | gateway de la PC (misma red Wi-Fi): entrega los datos de los reportes |
-| Servidor de cuentas | `http://44.252.104.3:8085` | Keycloak: valida usuario y contraseña |
+| Servidor del comedor | `http://32.187.224.152:8080` | gateway de la PC (misma red Wi-Fi): entrega los datos de los reportes |
+| Servidor de cuentas | `http://32.187.224.152:8085` | Keycloak: valida usuario y contraseña |
 
 ## Registrar la huella
 

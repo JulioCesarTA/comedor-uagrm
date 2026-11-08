@@ -52,3 +52,7 @@ Thumbs.db
 .env.secrets
 .env.cloud
 .phpunit.result.cache
+
+.env.cloud.nuevo
+
+.comedor-app.keys.tmp

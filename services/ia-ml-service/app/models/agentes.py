@@ -22,3 +22,10 @@ class Horario(BaseModel):
     cadaMin: int = 60
     hora: str = "08:00"
     dias: list[int] = [0, 1, 2, 3, 4, 5, 6]
+
+
+class EventoTelegram(BaseModel):
+    """Update de Telegram tal cual lo entrega getUpdates (lo envia n8n)."""
+    update_id: int | None = None
+    message: dict | None = None
+    callback_query: dict | None = None

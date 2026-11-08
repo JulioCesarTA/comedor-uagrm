@@ -3,8 +3,11 @@
 - Los avisos para aprobar llegan SOLO a los chats de usuarios con rol administrador (vinculados por correo).
 - Los mensajes se guardan primero en una cola local (SQLite): si no hay internet salen solos al volver la red.
 - Se reciben mensajes y botones con long-polling (getUpdates): no hace falta IP pública ni webhook.
+  Con TELEGRAM_RECEPCION=n8n la recepción y el envío los hace n8n: llama a `procesar_evento` y ejecuta las acciones que devuelve.
 - La conversación con cada persona (menú, quién soy, reservar y pagar) vive en `asistente`.
 """
+import contextvars
+import os
 import threading
 import time
 
@@ -13,6 +16,9 @@ from app.services import identidad, propuestas
 
 _despertar = threading.Event()
 _estado = {"ultimo_error": None, "ultimo_envio": None}
+RECEPCION_N8N = os.getenv("TELEGRAM_RECEPCION", "interna").lower() == "n8n"
+_SALIENTES = {"sendMessage", "answerCallbackQuery", "editMessageReplyMarkup", "deleteMessage"}
+_captura: contextvars.ContextVar[list | None] = contextvars.ContextVar("captura_telegram", default=None)
 
 
 def configurado() -> bool:
@@ -20,6 +26,10 @@ def configurado() -> bool:
 
 
 def _api(metodo: str, _espera: float = 15, **payload) -> dict:
+    acciones = _captura.get()
+    if acciones is not None and metodo in _SALIENTES:     # n8n ejecuta estas llamadas
+        acciones.append({"metodo": metodo, "datos": payload})
+        return {}
     return telegram_api.llamar(metodo, _espera, **payload)
 
 
@@ -157,6 +167,17 @@ def _procesar(u: dict) -> None:
         asistente.mensaje(u["message"])
 
 
+def procesar_evento(u: dict) -> list[dict]:
+    """Procesa un update de Telegram y devuelve las llamadas a la API de Telegram que debe hacer quien lo envió (n8n)."""
+    acciones: list[dict] = []
+    marca = _captura.set(acciones)
+    try:
+        _procesar(u)
+    finally:
+        _captura.reset(marca)
+    return acciones
+
+
 COMANDOS = [("start", "Mostrar el menú principal"), ("menu", "Ver el menú de comidas"), ("quiensoy", "Ver con qué cuenta estoy"),
             ("reservar", "Reservar una ración"), ("cambiar", "Cerrar sesión y entrar con otra cuenta")]
 
@@ -175,6 +196,9 @@ def _bucle_recepcion() -> None:
             if not comandos_listos:
                 _registrar_comandos()
                 comandos_listos = True
+            if RECEPCION_N8N:
+                time.sleep(60)
+                continue
             offset = int(repo_config.leer("offset") or 0)
             for u in _api("getUpdates", _espera=40, timeout=25, offset=offset, allowed_updates=["message", "callback_query"]):
                 repo_config.escribir("offset", str(u["update_id"] + 1))
